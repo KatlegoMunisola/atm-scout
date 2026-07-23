@@ -2,6 +2,22 @@ enum AtmType { inBranch, standalone }
 
 enum AtmStatus { functional, outOfOrder, noCash, unknown }
 
+/// Populated by the M2 `refresh_atm_confidence()` scheduled job (see
+/// supabase/migrations/20260723071545_atm_confidence_decay.sql) from recent
+/// atm_reports agreement/recency — not something the client computes.
+enum AtmConfidence { high, medium, low }
+
+AtmConfidence atmConfidenceFromString(String? value) {
+  switch (value) {
+    case 'high':
+      return AtmConfidence.high;
+    case 'medium':
+      return AtmConfidence.medium;
+    default:
+      return AtmConfidence.low;
+  }
+}
+
 AtmType atmTypeFromString(String value) =>
     value == 'in_branch' ? AtmType.inBranch : AtmType.standalone;
 
@@ -48,6 +64,7 @@ class Atm {
     this.address,
     required this.lastStatus,
     this.lastReportAt,
+    this.confidence = AtmConfidence.low,
   });
 
   final String id;
@@ -60,6 +77,7 @@ class Atm {
   final String? address;
   final AtmStatus lastStatus;
   final DateTime? lastReportAt;
+  final AtmConfidence confidence;
 
   factory Atm.fromJson(Map<String, dynamic> json) {
     return Atm(
@@ -75,6 +93,7 @@ class Atm {
       lastReportAt: json['last_report_at'] != null
           ? DateTime.parse(json['last_report_at'] as String)
           : null,
+      confidence: atmConfidenceFromString(json['confidence'] as String?),
     );
   }
 }

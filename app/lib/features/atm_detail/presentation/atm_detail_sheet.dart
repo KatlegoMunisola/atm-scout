@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../shared/models/atm.dart';
 import '../../../shared/utils/time_ago.dart';
+import '../../../shared/widgets/confidence_badge.dart';
 import '../../../shared/widgets/status_badge.dart';
 import '../../quick_report/presentation/quick_report_sheet.dart';
 import '../application/atm_detail_providers.dart';
@@ -30,6 +31,8 @@ class AtmDetailSheet extends ConsumerWidget {
                     Text(atm.bankName, style: Theme.of(context).textTheme.titleLarge),
               ),
               StatusBadge(status: atm.lastStatus),
+              const SizedBox(width: 8),
+              ConfidenceBadge(confidence: atm.confidence),
             ],
           ),
           if (atm.branchLabel != null) Text(atm.branchLabel!),

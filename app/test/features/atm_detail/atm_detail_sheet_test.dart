@@ -54,6 +54,7 @@ void main() {
     expect(find.text('Main Mall'), findsOneWidget);
     expect(find.text('Main Mall, Gaborone'), findsOneWidget);
     expect(find.text('Functional'), findsOneWidget); // StatusBadge label
+    expect(find.text('Low confidence'), findsOneWidget); // ConfidenceBadge label (default)
   });
 
   testWidgets('shows "no reports yet" when the ATM has no last report', (tester) async {
