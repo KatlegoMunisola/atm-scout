@@ -1,0 +1,33 @@
+name: Flutter CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  analyze-and-test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      # app/.env is declared as a Flutter asset (pubspec.yaml) but is
+      # gitignored — without a file here `flutter pub get`/build fails at
+      # the asset-manifest step, even though no test in this repo reads
+      # real Supabase/Mapbox values.
+      - name: Provide a placeholder .env
+        run: cp .env.example .env
+
+      - run: flutter pub get
+      # --no-fatal-infos: don't fail CI on info-level findings (there are 3
+      # pre-existing Mapbox SDK deprecation notices in map_home_screen.dart,
+      # unrelated to this change) — real errors/warnings still fail the build.
+      - run: flutter analyze --no-fatal-infos
+      - run: flutter test
