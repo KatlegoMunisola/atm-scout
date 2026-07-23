@@ -1,0 +1,7 @@
+# OS cruft
+.DS_Store
+Thumbs.db
+
+# Claude Code local session state - not for version control
+.claude/settings.local.json
+.claude/scheduled_tasks.lock
