@@ -13,7 +13,7 @@ class AtmRepository {
     final rows = await _client
         .from('atms')
         .select(
-          'id, bank_name, branch_label, atm_type, currency_code, lat, lng, address, last_status, last_report_at',
+          'id, bank_name, branch_label, atm_type, currency_code, lat, lng, address, last_status, last_report_at, confidence',
         )
         .order('created_at');
     return (rows as List<dynamic>)

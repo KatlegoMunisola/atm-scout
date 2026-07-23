@@ -37,6 +37,19 @@ void main() {
     });
   });
 
+  group('AtmConfidence mapping', () {
+    test('round-trips known confidence literals', () {
+      expect(atmConfidenceFromString('high'), AtmConfidence.high);
+      expect(atmConfidenceFromString('medium'), AtmConfidence.medium);
+      expect(atmConfidenceFromString('low'), AtmConfidence.low);
+    });
+
+    test('defaults to low for null or unrecognized values', () {
+      expect(atmConfidenceFromString(null), AtmConfidence.low);
+      expect(atmConfidenceFromString('garbage'), AtmConfidence.low);
+    });
+  });
+
   group('Atm.fromJson', () {
     test('parses a fully populated row', () {
       final atm = Atm.fromJson(const {
@@ -50,6 +63,7 @@ void main() {
         'address': 'Main Mall, Gaborone',
         'last_status': 'functional',
         'last_report_at': '2026-07-22T10:00:00Z',
+        'confidence': 'high',
       });
 
       expect(atm.id, 'atm-1');
@@ -62,6 +76,7 @@ void main() {
       expect(atm.address, 'Main Mall, Gaborone');
       expect(atm.lastStatus, AtmStatus.functional);
       expect(atm.lastReportAt, DateTime.parse('2026-07-22T10:00:00Z'));
+      expect(atm.confidence, AtmConfidence.high);
     });
 
     test('parses a row with nullable fields absent', () {
@@ -76,12 +91,14 @@ void main() {
         'address': null,
         'last_status': null,
         'last_report_at': null,
+        'confidence': null,
       });
 
       expect(atm.branchLabel, isNull);
       expect(atm.address, isNull);
       expect(atm.lastStatus, AtmStatus.unknown);
       expect(atm.lastReportAt, isNull);
+      expect(atm.confidence, AtmConfidence.low);
     });
 
     test('accepts integer lat/lng (num, not just double)', () {
