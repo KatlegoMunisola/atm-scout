@@ -50,6 +50,25 @@ void main() {
     });
   });
 
+  group('DepositSupport mapping', () {
+    test('round-trips known deposit-support literals', () {
+      expect(depositSupportFromString('yes'), DepositSupport.yes);
+      expect(depositSupportFromString('no'), DepositSupport.no);
+      expect(depositSupportFromString('unknown'), DepositSupport.unknown);
+    });
+
+    test('defaults to unknown for null or unrecognized values', () {
+      expect(depositSupportFromString(null), DepositSupport.unknown);
+      expect(depositSupportFromString('garbage'), DepositSupport.unknown);
+    });
+
+    test('converts back to db literals', () {
+      expect(depositSupportToString(DepositSupport.yes), 'yes');
+      expect(depositSupportToString(DepositSupport.no), 'no');
+      expect(depositSupportToString(DepositSupport.unknown), 'unknown');
+    });
+  });
+
   group('Atm.fromJson', () {
     test('parses a fully populated row', () {
       final atm = Atm.fromJson(const {
@@ -64,6 +83,7 @@ void main() {
         'last_status': 'functional',
         'last_report_at': '2026-07-22T10:00:00Z',
         'confidence': 'high',
+        'deposit_support': 'yes',
       });
 
       expect(atm.id, 'atm-1');
@@ -77,6 +97,7 @@ void main() {
       expect(atm.lastStatus, AtmStatus.functional);
       expect(atm.lastReportAt, DateTime.parse('2026-07-22T10:00:00Z'));
       expect(atm.confidence, AtmConfidence.high);
+      expect(atm.depositSupport, DepositSupport.yes);
     });
 
     test('parses a row with nullable fields absent', () {
@@ -99,6 +120,7 @@ void main() {
       expect(atm.lastStatus, AtmStatus.unknown);
       expect(atm.lastReportAt, isNull);
       expect(atm.confidence, AtmConfidence.low);
+      expect(atm.depositSupport, DepositSupport.unknown);
     });
 
     test('accepts integer lat/lng (num, not just double)', () {

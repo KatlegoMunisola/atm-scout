@@ -24,6 +24,7 @@ void main() {
     lng: 25.9231,
     address: 'Main Mall, Gaborone',
     lastStatus: AtmStatus.functional,
+    depositSupport: DepositSupport.yes,
   );
 
   late MockAtmRepository repository;
@@ -55,6 +56,38 @@ void main() {
     expect(find.text('Main Mall, Gaborone'), findsOneWidget);
     expect(find.text('Functional'), findsOneWidget); // StatusBadge label
     expect(find.text('Low confidence'), findsOneWidget); // ConfidenceBadge label (default)
+    expect(find.text('Accepts deposits'), findsOneWidget);
+    expect(find.widgetWithText(OutlinedButton, 'Suggest an edit'), findsOneWidget);
+    expect(find.widgetWithText(FilledButton, 'Report here'), findsOneWidget);
+  });
+
+  testWidgets('shows deposit support as unknown by default', (tester) async {
+    when(() => repository.fetchLatestReport(any())).thenAnswer((_) async => null);
+    when(() => repository.fetchDenominations(any())).thenAnswer((_) async => const []);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [atmRepositoryProvider.overrideWithValue(repository)],
+        child: MaterialApp(
+          home: Scaffold(
+            body: AtmDetailSheet(
+              atm: Atm(
+                id: atm.id,
+                bankName: atm.bankName,
+                atmType: atm.atmType,
+                currencyCode: atm.currencyCode,
+                lat: atm.lat,
+                lng: atm.lng,
+                lastStatus: atm.lastStatus,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('Deposit support unknown'), findsOneWidget);
   });
 
   testWidgets('shows "no reports yet" when the ATM has no last report', (tester) async {

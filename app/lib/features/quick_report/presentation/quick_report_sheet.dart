@@ -8,6 +8,25 @@ import '../../../shared/widgets/denomination_chip.dart';
 import '../../atm_detail/application/atm_detail_providers.dart';
 import '../../map/application/map_providers.dart';
 
+/// A report choice submittable via submit_atm_report(). Distinct from
+/// [AtmStatus]: 'removed' is a valid report claim ("there's no ATM here
+/// anymore") but not a valid atms.last_status value - it needs corroboration
+/// from a second reporter before it affects anything, handled server-side.
+enum _ReportChoice { functional, noCash, outOfOrder, removed }
+
+String _reportChoiceToDbString(_ReportChoice choice) {
+  switch (choice) {
+    case _ReportChoice.functional:
+      return 'functional';
+    case _ReportChoice.noCash:
+      return 'no_cash';
+    case _ReportChoice.outOfOrder:
+      return 'out_of_order';
+    case _ReportChoice.removed:
+      return 'removed';
+  }
+}
+
 /// The tap-and-go report flow: pick a status, optionally confirm which notes
 /// dispensed, submit. Designed for a "2 taps" common case (status + submit).
 class QuickReportSheet extends ConsumerStatefulWidget {
@@ -22,7 +41,7 @@ class QuickReportSheet extends ConsumerStatefulWidget {
 class _QuickReportSheetState extends ConsumerState<QuickReportSheet> {
   Position? _position;
   Object? _locationError;
-  AtmStatus? _selectedStatus;
+  _ReportChoice? _selectedChoice;
   final Set<String> _dispensedDenominationIds = {};
   bool _submitting = false;
 
@@ -60,27 +79,24 @@ class _QuickReportSheetState extends ConsumerState<QuickReportSheet> {
     return distance != null && distance <= 50;
   }
 
-  void _selectStatus(AtmStatus status) {
+  void _selectChoice(_ReportChoice choice) {
     setState(() {
-      _selectedStatus = status;
+      _selectedChoice = choice;
       _dispensedDenominationIds.clear();
     });
   }
 
   Future<void> _submit() async {
-    final status = _selectedStatus;
+    final choice = _selectedChoice;
     final position = _position;
-    if (status == null ||
-        status == AtmStatus.unknown ||
-        position == null ||
-        !_withinRange) {
+    if (choice == null || position == null || !_withinRange) {
       return;
     }
 
     setState(() => _submitting = true);
     try {
       List<Map<String, dynamic>> payload = const [];
-      if (status == AtmStatus.functional) {
+      if (choice == _ReportChoice.functional) {
         final denominations =
             ref.read(denominationsProvider(widget.atm.currencyCode)).value ??
                 const [];
@@ -97,7 +113,7 @@ class _QuickReportSheetState extends ConsumerState<QuickReportSheet> {
             lat: position.latitude,
             lng: position.longitude,
             accuracyMeters: position.accuracy,
-            status: atmStatusToDbString(status),
+            status: _reportChoiceToDbString(choice),
             denominations: payload,
           );
 
@@ -106,7 +122,13 @@ class _QuickReportSheetState extends ConsumerState<QuickReportSheet> {
       if (!mounted) return;
       Navigator.of(context).pop();
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Thanks! Report submitted.')),
+        SnackBar(
+          content: Text(
+            choice == _ReportChoice.removed
+                ? "Thanks - we'll double-check before removing it from the map."
+                : 'Thanks! Report submitted.',
+          ),
+        ),
       );
     } catch (error) {
       if (!mounted) return;
@@ -144,24 +166,37 @@ class _QuickReportSheetState extends ConsumerState<QuickReportSheet> {
               _StatusButton(
                 label: 'Functional',
                 color: Colors.green,
-                selected: _selectedStatus == AtmStatus.functional,
-                onTap: () => _selectStatus(AtmStatus.functional),
+                selected: _selectedChoice == _ReportChoice.functional,
+                onTap: () => _selectChoice(_ReportChoice.functional),
               ),
               _StatusButton(
                 label: 'No Cash',
                 color: Colors.orange,
-                selected: _selectedStatus == AtmStatus.noCash,
-                onTap: () => _selectStatus(AtmStatus.noCash),
+                selected: _selectedChoice == _ReportChoice.noCash,
+                onTap: () => _selectChoice(_ReportChoice.noCash),
               ),
               _StatusButton(
                 label: 'Out of Order',
                 color: Colors.red,
-                selected: _selectedStatus == AtmStatus.outOfOrder,
-                onTap: () => _selectStatus(AtmStatus.outOfOrder),
+                selected: _selectedChoice == _ReportChoice.outOfOrder,
+                onTap: () => _selectChoice(_ReportChoice.outOfOrder),
+              ),
+              _StatusButton(
+                label: "No longer here",
+                color: Colors.grey,
+                selected: _selectedChoice == _ReportChoice.removed,
+                onTap: () => _selectChoice(_ReportChoice.removed),
               ),
             ],
           ),
-          if (_selectedStatus == AtmStatus.functional) ...[
+          if (_selectedChoice == _ReportChoice.removed) ...[
+            const SizedBox(height: 12),
+            Text(
+              "We'll double-check with other reports before removing it from everyone's map.",
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
+          if (_selectedChoice == _ReportChoice.functional) ...[
             const SizedBox(height: 16),
             Text('Which notes came out?',
                 style: Theme.of(context).textTheme.labelLarge),
@@ -201,7 +236,7 @@ class _QuickReportSheetState extends ConsumerState<QuickReportSheet> {
           const SizedBox(height: 20),
           FilledButton(
             onPressed:
-                (_selectedStatus != null && _withinRange && !_submitting)
+                (_selectedChoice != null && _withinRange && !_submitting)
                     ? _submit
                     : null,
             child: _submitting

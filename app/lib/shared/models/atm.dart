@@ -2,6 +2,30 @@ enum AtmType { inBranch, standalone }
 
 enum AtmStatus { functional, outOfOrder, noCash, unknown }
 
+enum DepositSupport { yes, no, unknown }
+
+DepositSupport depositSupportFromString(String? value) {
+  switch (value) {
+    case 'yes':
+      return DepositSupport.yes;
+    case 'no':
+      return DepositSupport.no;
+    default:
+      return DepositSupport.unknown;
+  }
+}
+
+String depositSupportToString(DepositSupport value) {
+  switch (value) {
+    case DepositSupport.yes:
+      return 'yes';
+    case DepositSupport.no:
+      return 'no';
+    case DepositSupport.unknown:
+      return 'unknown';
+  }
+}
+
 /// Populated by the M2 `refresh_atm_confidence()` scheduled job (see
 /// supabase/migrations/20260723071545_atm_confidence_decay.sql) from recent
 /// atm_reports agreement/recency — not something the client computes.
@@ -65,6 +89,7 @@ class Atm {
     required this.lastStatus,
     this.lastReportAt,
     this.confidence = AtmConfidence.low,
+    this.depositSupport = DepositSupport.unknown,
   });
 
   final String id;
@@ -78,6 +103,7 @@ class Atm {
   final AtmStatus lastStatus;
   final DateTime? lastReportAt;
   final AtmConfidence confidence;
+  final DepositSupport depositSupport;
 
   factory Atm.fromJson(Map<String, dynamic> json) {
     return Atm(
@@ -94,6 +120,7 @@ class Atm {
           ? DateTime.parse(json['last_report_at'] as String)
           : null,
       confidence: atmConfidenceFromString(json['confidence'] as String?),
+      depositSupport: depositSupportFromString(json['deposit_support'] as String?),
     );
   }
 }

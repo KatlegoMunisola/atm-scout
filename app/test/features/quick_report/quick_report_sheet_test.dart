@@ -82,6 +82,23 @@ void main() {
     expect(find.text('P20'), findsOneWidget);
   });
 
+  testWidgets('selecting "No longer here" shows a corroboration notice and no denominations',
+      (tester) async {
+    await pumpSheet(tester);
+    await tester.pump();
+    await tester.pump();
+
+    await tester.tap(find.text('No longer here'));
+    await tester.pump();
+    await tester.pump();
+
+    expect(
+      find.textContaining("We'll double-check with other reports"),
+      findsOneWidget,
+    );
+    expect(find.text('Which notes came out?'), findsNothing);
+  });
+
   testWidgets('never calls submitReport while Submit stays disabled', (tester) async {
     await pumpSheet(tester);
     await tester.pump();

@@ -13,7 +13,7 @@ class AtmRepository {
     final rows = await _client
         .from('atms')
         .select(
-          'id, bank_name, branch_label, atm_type, currency_code, lat, lng, address, last_status, last_report_at, confidence',
+          'id, bank_name, branch_label, atm_type, currency_code, lat, lng, address, last_status, last_report_at, confidence, deposit_support',
         )
         .order('created_at');
     return (rows as List<dynamic>)
@@ -84,6 +84,32 @@ class AtmRepository {
       'p_branch_label': branchLabel,
       'p_address': address,
       'p_currency_code': currencyCode,
+    });
+    return Atm.fromJson(row);
+  }
+
+  Future<Atm> submitCorrection({
+    required String atmId,
+    required double lat,
+    required double lng,
+    required double? accuracyMeters,
+    bool reposition = false,
+    String? bankName,
+    String? branchLabel,
+    String? atmType,
+    String? depositSupport,
+  }) async {
+    final row =
+        await _client.rpc<Map<String, dynamic>>('submit_atm_correction', params: {
+      'p_atm_id': atmId,
+      'p_lat': lat,
+      'p_lng': lng,
+      'p_accuracy_meters': accuracyMeters,
+      'p_reposition': reposition,
+      'p_bank_name': bankName,
+      'p_branch_label': branchLabel,
+      'p_atm_type': atmType,
+      'p_deposit_support': depositSupport,
     });
     return Atm.fromJson(row);
   }

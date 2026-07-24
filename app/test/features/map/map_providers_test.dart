@@ -1,11 +1,29 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:mocktail/mocktail.dart';
 
 import 'package:atm_scout/features/map/application/map_providers.dart';
 import 'package:atm_scout/shared/models/atm.dart';
 
 import '../../mocks/mock_repositories.dart';
+
+Position _testPosition({required double latitude, required double longitude}) {
+  return Position(
+    latitude: latitude,
+    longitude: longitude,
+    timestamp: DateTime.utc(2026, 1, 1),
+    accuracy: 5,
+    altitude: 0,
+    altitudeAccuracy: 0,
+    heading: 0,
+    headingAccuracy: 0,
+    speed: 0,
+    speedAccuracy: 0,
+  );
+}
 
 void main() {
   setUpAll(registerRepositoryFallbackValues);
@@ -97,5 +115,64 @@ void main() {
 
     container.dispose();
     verify(() => channel.unsubscribe()).called(1);
+  });
+
+  group('nearestAtmsProvider', () {
+    const nearAtm = Atm(
+      id: 'near',
+      bankName: 'Near Bank',
+      atmType: AtmType.standalone,
+      currencyCode: 'BWP',
+      lat: -24.6282,
+      lng: 25.9231,
+      lastStatus: AtmStatus.unknown,
+    );
+    const farAtm = Atm(
+      id: 'far',
+      bankName: 'Far Bank',
+      atmType: AtmType.standalone,
+      currencyCode: 'BWP',
+      lat: -25.9692, // Lobatse - tens of km further from Gaborone
+      lng: 25.6785,
+      lastStatus: AtmStatus.unknown,
+    );
+
+    test('sorts ATMs by distance from the user, nearest first', () async {
+      when(() => repository.fetchAtms())
+          .thenAnswer((_) async => [farAtm, nearAtm]);
+
+      final container = ProviderContainer(overrides: [
+        atmRepositoryProvider.overrideWithValue(repository),
+        userLocationProvider.overrideWith(
+          (ref) async => _testPosition(latitude: -24.6282, longitude: 25.9231),
+        ),
+      ]);
+      addTearDown(container.dispose);
+
+      container.read(atmListProvider);
+      await Future<void>.delayed(Duration.zero);
+      await container.read(userLocationProvider.future);
+
+      final nearest = container.read(nearestAtmsProvider);
+      expect(nearest.map((n) => n.atm.id).toList(), ['near', 'far']);
+      expect(nearest[0].distanceMeters, lessThan(nearest[1].distanceMeters));
+    });
+
+    test('is empty while location has not resolved yet', () async {
+      when(() => repository.fetchAtms()).thenAnswer((_) async => [nearAtm]);
+
+      final container = ProviderContainer(overrides: [
+        atmRepositoryProvider.overrideWithValue(repository),
+        userLocationProvider.overrideWith(
+          (ref) => Completer<Position>().future, // never resolves
+        ),
+      ]);
+      addTearDown(container.dispose);
+
+      container.read(atmListProvider);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(container.read(nearestAtmsProvider), isEmpty);
+    });
   });
 }

@@ -5,8 +5,20 @@ import '../../../shared/models/atm.dart';
 import '../../../shared/utils/time_ago.dart';
 import '../../../shared/widgets/confidence_badge.dart';
 import '../../../shared/widgets/status_badge.dart';
+import '../../quick_report/presentation/edit_atm_sheet.dart';
 import '../../quick_report/presentation/quick_report_sheet.dart';
 import '../application/atm_detail_providers.dart';
+
+String _depositSupportLabel(DepositSupport value) {
+  switch (value) {
+    case DepositSupport.yes:
+      return 'Accepts deposits';
+    case DepositSupport.no:
+      return 'Cash withdrawal only';
+    case DepositSupport.unknown:
+      return 'Deposit support unknown';
+  }
+}
 
 class AtmDetailSheet extends ConsumerWidget {
   const AtmDetailSheet({super.key, required this.atm});
@@ -38,6 +50,9 @@ class AtmDetailSheet extends ConsumerWidget {
           if (atm.branchLabel != null) Text(atm.branchLabel!),
           if (atm.address != null)
             Text(atm.address!, style: Theme.of(context).textTheme.bodySmall),
+          const SizedBox(height: 4),
+          Text(_depositSupportLabel(atm.depositSupport),
+              style: Theme.of(context).textTheme.bodySmall),
           const SizedBox(height: 8),
           if (atm.lastReportAt != null)
             Text('Last reported ${formatTimeAgo(atm.lastReportAt!)}',
@@ -78,17 +93,38 @@ class AtmDetailSheet extends ConsumerWidget {
             error: (error, _) => Text('Could not load report: $error'),
           ),
           const SizedBox(height: 20),
-          FilledButton.icon(
-            icon: const Icon(Icons.edit_location_alt),
-            label: const Text('Report here'),
-            onPressed: () {
-              Navigator.of(context).pop();
-              showModalBottomSheet(
-                context: context,
-                isScrollControlled: true,
-                builder: (_) => QuickReportSheet(atm: atm),
-              );
-            },
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  icon: const Icon(Icons.edit_note),
+                  label: const Text('Suggest an edit'),
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      builder: (_) => EditAtmSheet(atm: atm),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: FilledButton.icon(
+                  icon: const Icon(Icons.edit_location_alt),
+                  label: const Text('Report here'),
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      builder: (_) => QuickReportSheet(atm: atm),
+                    );
+                  },
+                ),
+              ),
+            ],
           ),
         ],
       ),
