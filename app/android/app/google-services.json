@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "257041410910",
+    "project_id": "atm-scout",
+    "storage_bucket": "atm-scout.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:257041410910:android:0666d47df446f39afbbdcf",
+        "android_client_info": {
+          "package_name": "com.atmscout.app.atm_scout"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "257041410910-5j9k0q6ropfvlt3sg6epfemq8i5rnjm7.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCecc7Ao7Cj-eRHkDo1fyLM50NhWkbHDrw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "257041410910-5j9k0q6ropfvlt3sg6epfemq8i5rnjm7.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

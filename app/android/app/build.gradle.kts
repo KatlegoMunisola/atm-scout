@@ -1,7 +1,31 @@
+import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
+}
+
+// Applied imperatively (not in the plugins {} block above) and only once
+// google-services.json exists: the Google Services plugin fails the build
+// outright if that file is missing, which would break every local build
+// (including `flutter run`) for anyone who hasn't completed the one-time
+// Firebase app registration yet. CI always has the file since it's committed.
+if (file("google-services.json").exists()) {
+    apply(plugin = "com.google.gms.google-services")
+}
+
+// Release signing: values come from key.properties (gitignored, never
+// committed) rather than being hardcoded. Missing file -> release builds
+// silently fall back to the pre-existing debug signingConfig further down,
+// so `flutter run --release` keeps working for anyone without release
+// secrets.
+val keystorePropertiesFile = rootProject.file("key.properties")
+val keystoreProperties = Properties()
+val hasReleaseSigningConfig = keystorePropertiesFile.exists()
+if (hasReleaseSigningConfig) {
+    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
 }
 
 android {
@@ -25,11 +49,25 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        if (hasReleaseSigningConfig) {
+            create("release") {
+                keyAlias = keystoreProperties["keyAlias"] as String?
+                keyPassword = keystoreProperties["keyPassword"] as String?
+                storeFile = keystoreProperties["storeFile"]?.let { file(it) }
+                storePassword = keystoreProperties["storePassword"] as String?
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            // Real release signing once key.properties exists (see above);
+            // falls back to debug signing otherwise so `flutter run --release`
+            // keeps working without release secrets present.
+            signingConfig = signingConfigs.getByName(
+                if (hasReleaseSigningConfig) "release" else "debug"
+            )
         }
     }
 }

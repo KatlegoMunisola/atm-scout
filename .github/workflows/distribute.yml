@@ -1,0 +1,75 @@
+name: Distribute to Firebase App Distribution
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_notes:
+        description: "Release notes for testers"
+        required: false
+        default: "New build from CI."
+      tester_group:
+        description: "Firebase App Distribution tester group alias"
+        required: false
+        default: "testers"
+
+jobs:
+  build-and-distribute:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      # Unlike flutter-ci.yml's placeholder .env (fine for tests/analyze), a
+      # distributed build must actually work for testers - it needs the real
+      # backend/map credentials baked in.
+      - name: Write real .env
+        run: |
+          cat > .env <<EOF
+          SUPABASE_URL=${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
+          MAPBOX_ACCESS_TOKEN=${{ secrets.MAPBOX_ACCESS_TOKEN }}
+          EOF
+
+      - name: Decode release keystore
+        run: echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > android/app/release.keystore.jks
+
+      - name: Write key.properties
+        run: |
+          cat > android/key.properties <<EOF
+          storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}
+          keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}
+          storeFile=release.keystore.jks
+          EOF
+
+      - run: flutter pub get
+
+      # Don't distribute a build that doesn't pass what every push already
+      # gets checked against - fail fast here instead of shipping a broken
+      # build to testers.
+      - run: flutter analyze --no-fatal-infos
+      - run: flutter test
+
+      - name: Build release APK
+        env:
+          ORG_GRADLE_PROJECT_MAPBOX_DOWNLOADS_TOKEN: ${{ secrets.MAPBOX_DOWNLOADS_TOKEN }}
+        run: flutter build apk --release
+
+      - name: Upload to Firebase App Distribution
+        uses: wzieba/Firebase-Distribution-Github-Action@v1
+        with:
+          appId: ${{ secrets.FIREBASE_APP_ID }}
+          serviceCredentialsFileContent: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+          groups: ${{ inputs.tester_group }}
+          file: app/build/app/outputs/flutter-apk/app-release.apk
+          releaseNotes: ${{ inputs.release_notes }}
+
+      - name: Clean up secrets from the runner
+        if: always()
+        run: rm -f .env android/key.properties android/app/release.keystore.jks
